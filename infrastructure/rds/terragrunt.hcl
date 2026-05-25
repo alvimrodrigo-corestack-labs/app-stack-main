@@ -10,7 +10,7 @@ dependency "network" {
     vpc_id             = "vpc-mock-id"
     private_subnet_ids = ["subnet-mock-1", "subnet-mock-2"]
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 dependency "rds_sg" {
@@ -19,7 +19,7 @@ dependency "rds_sg" {
   mock_outputs = {
     security_group_id = "sg-mock-id"
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 terraform {
