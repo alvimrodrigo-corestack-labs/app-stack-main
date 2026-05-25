@@ -29,7 +29,7 @@ terraform {
 inputs = {
   identifier = "app-stack-db-dev"
   engine     = "postgres"
-  engine_version = "15.4"
+  engine_version = "15.18" 
   instance_class = "db.t3.micro" 
   
   allocated_storage = 20
