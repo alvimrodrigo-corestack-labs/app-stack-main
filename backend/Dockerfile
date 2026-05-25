@@ -27,9 +27,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-workspace --package app
 
-# Instalar boto3 explicitamente para carregar segredos da AWS
-RUN uv pip install boto3
-
 COPY ./backend/scripts /app/backend/scripts
 
 COPY ./backend/pyproject.toml ./backend/alembic.ini /app/backend/
@@ -42,6 +39,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --package app
+
+# Instalar boto3 explicitamente para carregar segredos da AWS
+# Deve ser rodado APÓS o uv sync para evitar remoção automática por não estar no lockfile
+RUN uv pip install boto3
 
 WORKDIR /app/backend/
 
