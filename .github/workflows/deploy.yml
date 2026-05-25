@@ -21,11 +21,18 @@ jobs:
     name: Infrastructure Plan
     runs-on: ubuntu-latest
     environment: aws-deploy
-    outputs:
-      plan_status: ${{ steps.plan.outcome }}
     steps:
-      - name: Checkout
+      - name: Checkout App Repo
         uses: actions/checkout@v4
+        with:
+          path: app-stack-main
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: alvimrodrigo-corestack-labs/tf-aws-core-resources
+          token: ${{ secrets.GITHUB_TOKEN }} # Ou use um PAT se o repo for privado
+          path: tf-aws-core-resources
 
       - name: Setup SSH Keys
         uses: webfactory/ssh-agent@v0.9.0
@@ -53,8 +60,8 @@ jobs:
         id: plan
         run: |
           set -o pipefail
-          terragrunt run --all --backend-bootstrap plan --no-color | tee plan_output.txt
-        working-directory: infrastructure
+          terragrunt run --all --backend-bootstrap plan --no-color --terragrunt-ignore-external-dependencies | tee plan_output.txt
+        working-directory: app-stack-main/infrastructure
 
       - name: Post Plan to PR
         if: github.event_name == 'pull_request' && always()
@@ -64,7 +71,7 @@ jobs:
           script: |
             const fs = require('fs');
             let output = "Plan failed or output not found";
-            try { output = fs.readFileSync('infrastructure/plan_output.txt', 'utf8'); } catch(e) {}
+            try { output = fs.readFileSync('app-stack-main/infrastructure/plan_output.txt', 'utf8'); } catch(e) {}
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -75,13 +82,20 @@ jobs:
   infra-apply:
     name: Infrastructure Apply
     needs: infra-plan
-    # Roda no push para main OU se for aprovado no environment
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: aws-deploy # Aqui o GitHub vai pedir aprovação manual
+    environment: aws-deploy
     steps:
-      - name: Checkout
+      - name: Checkout App Repo
         uses: actions/checkout@v4
+        with:
+          path: app-stack-main
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: alvimrodrigo-corestack-labs/tf-aws-core-resources
+          path: tf-aws-core-resources
 
       - name: Setup SSH Keys
         uses: webfactory/ssh-agent@v0.9.0
@@ -107,8 +121,8 @@ jobs:
 
       - name: Terragrunt Apply
         run: |
-          terragrunt run --all --backend-bootstrap apply
-        working-directory: infrastructure
+          terragrunt run --all --backend-bootstrap apply --terragrunt-ignore-external-dependencies
+        working-directory: app-stack-main/infrastructure
 
   build-push:
     name: Build and Push Images
@@ -116,7 +130,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: aws-deploy
     steps:
-      - name: Checkout
+      - name: Checkout App Repo
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
@@ -158,8 +172,16 @@ jobs:
     runs-on: ubuntu-latest
     environment: aws-deploy
     steps:
-      - name: Checkout
+      - name: Checkout App Repo
         uses: actions/checkout@v4
+        with:
+          path: app-stack-main
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: alvimrodrigo-corestack-labs/tf-aws-core-resources
+          path: tf-aws-core-resources
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -180,5 +202,5 @@ jobs:
 
       - name: Deploy ECS Services
         run: |
-          terragrunt run --all --backend-bootstrap apply
-        working-directory: infrastructure/ecs-service
+          terragrunt run --all --backend-bootstrap apply --terragrunt-ignore-external-dependencies
+        working-directory: app-stack-main/infrastructure/ecs-service
