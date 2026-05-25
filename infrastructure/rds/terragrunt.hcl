@@ -45,4 +45,5 @@ inputs = {
   
   skip_final_snapshot = true
   publicly_accessible = false
+  backup_retention_period = 0 # FinOps: Desativado para Free Tier
 }
