@@ -13,6 +13,15 @@ dependency "network" {
   mock_outputs_allowed_terraform_commands = ["plan"]
 }
 
+dependency "rds_sg" {
+  config_path = "../security-groups/rds"
+  
+  mock_outputs = {
+    security_group_id = "sg-mock-id"
+  }
+  mock_outputs_allowed_terraform_commands = ["plan"]
+}
+
 terraform {
   source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/rds?ref=main"
 }
@@ -21,14 +30,18 @@ inputs = {
   identifier = "app-stack-db-dev"
   engine     = "postgres"
   engine_version = "15.4"
-  instance_class = "db.t3.micro" # FinOps: Menor instância para lab
+  instance_class = "db.t3.micro" 
   
   allocated_storage = 20
-  db_name           = "appdb"
-  username          = "dbadmin"
+  db_name           = "app"
+  
+  # Removendo username/password fixos para gerar via modulo + random
+  # username          = "postgres" 
+  # password          = "postgres123"
   
   vpc_id     = dependency.network.outputs.vpc_id
   subnet_ids = dependency.network.outputs.private_subnet_ids
+  vpc_security_group_ids = [dependency.rds_sg.outputs.security_group_id]
   
   skip_final_snapshot = true
   publicly_accessible = false
