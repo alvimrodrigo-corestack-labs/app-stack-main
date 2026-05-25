@@ -24,7 +24,8 @@ jobs:
     steps:
       - name: Checkout App Repo
         uses: actions/checkout@v4
-        # Removido 'path' redundante
+        with:
+          path: app-stack-main
 
       - name: Checkout Core Repo
         uses: actions/checkout@v4
@@ -60,7 +61,7 @@ jobs:
         run: |
           set -o pipefail
           terragrunt run --all --backend-bootstrap plan --no-color | tee plan_output.txt
-        working-directory: infrastructure
+        working-directory: app-stack-main/infrastructure
 
       - name: Post Plan to PR
         if: github.event_name == 'pull_request' && always()
@@ -70,7 +71,7 @@ jobs:
           script: |
             const fs = require('fs');
             let output = "Plan failed or output not found";
-            try { output = fs.readFileSync('infrastructure/plan_output.txt', 'utf8'); } catch(e) {}
+            try { output = fs.readFileSync('app-stack-main/infrastructure/plan_output.txt', 'utf8'); } catch(e) {}
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -87,6 +88,8 @@ jobs:
     steps:
       - name: Checkout App Repo
         uses: actions/checkout@v4
+        with:
+          path: app-stack-main
 
       - name: Checkout Core Repo
         uses: actions/checkout@v4
@@ -119,7 +122,7 @@ jobs:
       - name: Terragrunt Apply
         run: |
           terragrunt run --all --backend-bootstrap apply
-        working-directory: infrastructure
+        working-directory: app-stack-main/infrastructure
 
   build-push:
     name: Build and Push Images
@@ -129,6 +132,8 @@ jobs:
     steps:
       - name: Checkout App Repo
         uses: actions/checkout@v4
+        with:
+          path: app-stack-main
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -146,6 +151,7 @@ jobs:
           ECR_REPOSITORY: app-stack-main
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          cd app-stack-main
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f backend/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
@@ -157,6 +163,7 @@ jobs:
           ECR_REPOSITORY: app-frontend
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          cd app-stack-main
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f frontend/Dockerfile \
             --build-arg VITE_API_URL=http://api.fastapi.corestack.labs .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -171,6 +178,8 @@ jobs:
     steps:
       - name: Checkout App Repo
         uses: actions/checkout@v4
+        with:
+          path: app-stack-main
 
       - name: Checkout Core Repo
         uses: actions/checkout@v4
@@ -203,4 +212,4 @@ jobs:
       - name: Deploy ECS Services
         run: |
           terragrunt run --all --backend-bootstrap apply
-        working-directory: infrastructure/ecs-service
+        working-directory: app-stack-main/infrastructure/ecs-service
