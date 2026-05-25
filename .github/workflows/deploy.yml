@@ -53,7 +53,7 @@ jobs:
         id: plan
         run: |
           set -o pipefail
-          terragrunt run-all plan --terragrunt-non-interactive --no-color | tee plan_output.txt
+          terragrunt run --all --backend-bootstrap plan --no-color | tee plan_output.txt
         working-directory: infrastructure
 
       - name: Post Plan to PR
@@ -107,7 +107,7 @@ jobs:
 
       - name: Terragrunt Apply
         run: |
-          terragrunt run-all apply --terragrunt-non-interactive
+          terragrunt run --all --backend-bootstrap apply
         working-directory: infrastructure
 
   build-push:
@@ -180,5 +180,5 @@ jobs:
 
       - name: Deploy ECS Services
         run: |
-          terragrunt run-all apply --terragrunt-non-interactive
+          terragrunt run --all --backend-bootstrap apply
         working-directory: infrastructure/ecs-service
