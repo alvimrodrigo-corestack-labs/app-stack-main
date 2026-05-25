@@ -1,0 +1,63 @@
+name: App Stack Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: 'Digite "DESTRUIR" para confirmar a exclusão de toda a infraestrutura'
+        required: true
+        default: 'NAO'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  TG_NON_INTERACTIVE: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    name: Terragrunt Destroy
+    if: github.event.inputs.confirm_destroy == 'DESTRUIR'
+    runs-on: ubuntu-latest
+    environment: aws-deploy # Exige aprovação se configurado no ambiente
+    steps:
+      - name: Checkout App Repo
+        uses: actions/checkout@v4
+        with:
+          path: app-stack-main
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: alvimrodrigo-corestack-labs/tf-aws-core-resources
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: tf-aws-core-resources
+
+      - name: Setup SSH Keys
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+          terraform_wrapper: false
+
+      - name: Setup Terragrunt
+        run: |
+          sudo wget -q -O /usr/local/bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/latest/download/terragrunt_linux_amd64"
+          sudo chmod +x /usr/local/bin/terragrunt
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "${{ secrets.AWS_ROLE_ARN }}"
+          aws-region: us-east-1
+
+      - name: Terragrunt Destroy
+        run: |
+          terragrunt run --all --backend-bootstrap destroy
+        working-directory: app-stack-main/infrastructure
