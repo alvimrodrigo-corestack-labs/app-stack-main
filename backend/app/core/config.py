@@ -48,17 +48,36 @@ class Settings(BaseSettings):
             self.FRONTEND_HOST
         ]
 
-    PROJECT_NAME: str
+    PROJECT_NAME: str = "FastAPI Project"
     SENTRY_DSN: HttpUrl | None = None
-    POSTGRES_SERVER: str
+    POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str = ""
-    POSTGRES_DB: str = ""
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "changethis"
+    POSTGRES_DB: str = "app"
+    DATABASE_SECRET_NAME: str | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
+        if self.DATABASE_SECRET_NAME:
+            try:
+                import boto3
+                import json
+                client = boto3.client("secretsmanager", region_name="us-east-1")
+                response = client.get_secret_value(SecretId=self.DATABASE_SECRET_NAME)
+                secret = json.loads(response["SecretString"])
+                return PostgresDsn.build(
+                    scheme="postgresql+psycopg",
+                    username=secret["username"],
+                    password=secret["password"],
+                    host=secret["host"],
+                    port=int(secret["port"]),
+                    path=secret["db_name"],
+                )
+            except Exception as e:
+                print(f"Error loading secret {self.DATABASE_SECRET_NAME}: {e}")
+        
         return PostgresDsn.build(
             scheme="postgresql+psycopg",
             username=self.POSTGRES_USER,

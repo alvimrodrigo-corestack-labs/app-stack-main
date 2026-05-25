@@ -89,6 +89,7 @@ inputs = {
         }
       ]
       environment = [
+        { name = "PROJECT_NAME", value = "FastAPI ECS Lab" },
         { name = "DOMAIN", value = "fastapi.corestack.labs" },
         { name = "ENVIRONMENT", value = "production" },
         { name = "DATABASE_SECRET_NAME", value = dependency.rds.outputs.db_password_secret_arn },
