@@ -4,14 +4,26 @@ include "root" {
 
 dependency "network" {
   config_path = "../../../tf-aws-core-resources/environments/dev/network"
+  
+  mock_outputs = {
+    vpc_id = "vpc-mock-id"
+  }
+  mock_outputs_allowed_terraform_commands = ["plan"]
 }
 
 dependency "alb" {
   config_path = "../../../tf-aws-core-resources/environments/dev/load-balancer"
+  
+  mock_outputs = {
+    http_listener_arns = {
+      "80" = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/my-load-balancer/50dc6c495c0c9188/f2f7dc8efc522d38"
+    }
+  }
+  mock_outputs_allowed_terraform_commands = ["plan"]
 }
 
 terraform {
-  source = "../../..//tf-aws-modules/modules/alb-app-link"
+  source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/alb-app-link?ref=main"
 }
 
 inputs = {
