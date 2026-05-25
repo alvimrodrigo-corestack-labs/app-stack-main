@@ -24,8 +24,7 @@ jobs:
     steps:
       - name: Checkout App Repo
         uses: actions/checkout@v4
-        with:
-          path: app-stack-main
+        # Removido 'path' redundante
 
       - name: Checkout Core Repo
         uses: actions/checkout@v4
@@ -60,9 +59,8 @@ jobs:
         id: plan
         run: |
           set -o pipefail
-          # Removida flag problemática, Terragrunt usará o filesystem local (VPC/Cluster já existem)
           terragrunt run --all --backend-bootstrap plan --no-color | tee plan_output.txt
-        working-directory: app-stack-main/infrastructure
+        working-directory: infrastructure
 
       - name: Post Plan to PR
         if: github.event_name == 'pull_request' && always()
@@ -72,7 +70,7 @@ jobs:
           script: |
             const fs = require('fs');
             let output = "Plan failed or output not found";
-            try { output = fs.readFileSync('app-stack-main/infrastructure/plan_output.txt', 'utf8'); } catch(e) {}
+            try { output = fs.readFileSync('infrastructure/plan_output.txt', 'utf8'); } catch(e) {}
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -89,8 +87,6 @@ jobs:
     steps:
       - name: Checkout App Repo
         uses: actions/checkout@v4
-        with:
-          path: app-stack-main
 
       - name: Checkout Core Repo
         uses: actions/checkout@v4
@@ -123,7 +119,7 @@ jobs:
       - name: Terragrunt Apply
         run: |
           terragrunt run --all --backend-bootstrap apply
-        working-directory: app-stack-main/infrastructure
+        working-directory: infrastructure
 
   build-push:
     name: Build and Push Images
@@ -175,8 +171,6 @@ jobs:
     steps:
       - name: Checkout App Repo
         uses: actions/checkout@v4
-        with:
-          path: app-stack-main
 
       - name: Checkout Core Repo
         uses: actions/checkout@v4
@@ -209,4 +203,4 @@ jobs:
       - name: Deploy ECS Services
         run: |
           terragrunt run --all --backend-bootstrap apply
-        working-directory: app-stack-main/infrastructure/ecs-service
+        working-directory: infrastructure/ecs-service
