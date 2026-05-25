@@ -79,9 +79,8 @@ inputs = {
       name      = "backend"
       image     = "${dependency.ecr.outputs.repository_url}:latest"
       essential = true
-      # Comando customizado para rodar migrations e depois a app
-      # Ref: full-stack-fastapi-template prestart.sh logic
-      command   = ["/bin/bash", "-c", "bash backend/scripts/prestart.sh && fastapi run --workers 4 app/main.py"]
+      # Comando corrigido: Relativo ao WORKDIR /app/backend/
+      command   = ["/bin/bash", "-c", "bash scripts/prestart.sh && fastapi run --workers 4 app/main.py"]
       portMappings = [
         {
           containerPort = 8000
