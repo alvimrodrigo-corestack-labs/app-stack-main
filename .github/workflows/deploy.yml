@@ -184,6 +184,11 @@ jobs:
           repository: alvimrodrigo-corestack-labs/tf-aws-core-resources
           path: tf-aws-core-resources
 
+      - name: Setup SSH Keys
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
