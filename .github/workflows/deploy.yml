@@ -60,7 +60,6 @@ jobs:
         id: plan
         run: |
           set -o pipefail
-          # Removida flag problemática, Terragrunt usará o filesystem local (VPC/Cluster já existem)
           terragrunt run --all --backend-bootstrap plan --no-color | tee plan_output.txt
         working-directory: app-stack-main/infrastructure
 
@@ -133,6 +132,8 @@ jobs:
     steps:
       - name: Checkout App Repo
         uses: actions/checkout@v4
+        with:
+          path: app-stack-main
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -150,6 +151,7 @@ jobs:
           ECR_REPOSITORY: app-stack-main
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          cd app-stack-main
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f backend/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
@@ -161,6 +163,7 @@ jobs:
           ECR_REPOSITORY: app-frontend
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          cd app-stack-main
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f frontend/Dockerfile \
             --build-arg VITE_API_URL=http://api.fastapi.corestack.labs .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
