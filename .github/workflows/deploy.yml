@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: alvimrodrigo-corestack-labs/tf-aws-core-resources
-          token: ${{ secrets.GITHUB_TOKEN }} # Ou use um PAT se o repo for privado
+          token: ${{ secrets.GITHUB_TOKEN }}
           path: tf-aws-core-resources
 
       - name: Setup SSH Keys
@@ -60,7 +60,7 @@ jobs:
         id: plan
         run: |
           set -o pipefail
-          terragrunt run --all --backend-bootstrap plan --no-color --terragrunt-ignore-external-dependencies | tee plan_output.txt
+          terragrunt --terragrunt-ignore-external-dependencies run --all --backend-bootstrap plan --no-color | tee plan_output.txt
         working-directory: app-stack-main/infrastructure
 
       - name: Post Plan to PR
@@ -121,7 +121,7 @@ jobs:
 
       - name: Terragrunt Apply
         run: |
-          terragrunt run --all --backend-bootstrap apply --terragrunt-ignore-external-dependencies
+          terragrunt --terragrunt-ignore-external-dependencies run --all --backend-bootstrap apply
         working-directory: app-stack-main/infrastructure
 
   build-push:
@@ -202,5 +202,5 @@ jobs:
 
       - name: Deploy ECS Services
         run: |
-          terragrunt run --all --backend-bootstrap apply --terragrunt-ignore-external-dependencies
+          terragrunt --terragrunt-ignore-external-dependencies run --all --backend-bootstrap apply
         working-directory: app-stack-main/infrastructure/ecs-service
