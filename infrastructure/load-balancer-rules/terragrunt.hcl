@@ -23,7 +23,7 @@ dependency "alb" {
 }
 
 terraform {
-  source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/alb-app-link?ref=main"
+  source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/alb-app-link?ref=feat/alb-app-link"
 }
 
 inputs = {
