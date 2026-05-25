@@ -4,10 +4,20 @@ include "root" {
 
 dependency "network" {
   config_path = "../../../../tf-aws-core-resources/environments/dev/network"
+  
+  mock_outputs = {
+    vpc_id = "vpc-mock-id"
+  }
+  mock_outputs_allowed_terraform_commands = ["plan"]
 }
 
 dependency "alb_sg" {
   config_path = "../../../../tf-aws-core-resources/environments/dev/security-groups"
+  
+  mock_outputs = {
+    security_group_id = "sg-mock-id"
+  }
+  mock_outputs_allowed_terraform_commands = ["plan"]
 }
 
 terraform {

@@ -1,0 +1,207 @@
+name: App Stack Pipeline
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  TG_NON_INTERACTIVE: true
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  infra-plan:
+    name: Infrastructure Plan
+    runs-on: ubuntu-latest
+    environment: aws-deploy
+    steps:
+      - name: Checkout App Repo
+        uses: actions/checkout@v4
+        with:
+          path: app-stack-main
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: alvimrodrigo-corestack-labs/tf-aws-core-resources
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: tf-aws-core-resources
+
+      - name: Setup SSH Keys
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+          terraform_wrapper: false
+
+      - name: Setup Terragrunt
+        run: |
+          sudo wget -q -O /usr/local/bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/latest/download/terragrunt_linux_amd64"
+          sudo chmod +x /usr/local/bin/terragrunt
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "${{ secrets.AWS_ROLE_ARN }}"
+          aws-region: us-east-1
+
+      - name: Terragrunt Plan
+        id: plan
+        run: |
+          set -o pipefail
+          # Removida flag problemática, Terragrunt usará o filesystem local (VPC/Cluster já existem)
+          terragrunt run --all --backend-bootstrap plan --no-color | tee plan_output.txt
+        working-directory: app-stack-main/infrastructure
+
+      - name: Post Plan to PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          script: |
+            const fs = require('fs');
+            let output = "Plan failed or output not found";
+            try { output = fs.readFileSync('app-stack-main/infrastructure/plan_output.txt', 'utf8'); } catch(e) {}
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '#### App Stack - Terragrunt Plan Output 📖\n<details><summary>Show Plan</summary>\n\n```terraform\n' + output + '\n```\n\n</details>\n\n**Aprove o merge para a main para executar o Apply.**'
+            })
+
+  infra-apply:
+    name: Infrastructure Apply
+    needs: infra-plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: aws-deploy
+    steps:
+      - name: Checkout App Repo
+        uses: actions/checkout@v4
+        with:
+          path: app-stack-main
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: alvimrodrigo-corestack-labs/tf-aws-core-resources
+          path: tf-aws-core-resources
+
+      - name: Setup SSH Keys
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+          terraform_wrapper: false
+
+      - name: Setup Terragrunt
+        run: |
+          sudo wget -q -O /usr/local/bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/latest/download/terragrunt_linux_amd64"
+          sudo chmod +x /usr/local/bin/terragrunt
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "${{ secrets.AWS_ROLE_ARN }}"
+          aws-region: us-east-1
+
+      - name: Terragrunt Apply
+        run: |
+          terragrunt run --all --backend-bootstrap apply
+        working-directory: app-stack-main/infrastructure
+
+  build-push:
+    name: Build and Push Images
+    needs: infra-apply
+    runs-on: ubuntu-latest
+    environment: aws-deploy
+    steps:
+      - name: Checkout App Repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "${{ secrets.AWS_ROLE_ARN }}"
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Backend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: app-stack-main
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f backend/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Build and Push Frontend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: app-frontend
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f frontend/Dockerfile \
+            --build-arg VITE_API_URL=http://api.fastapi.corestack.labs .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+  deploy-ecs:
+    name: Deploy to ECS
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: aws-deploy
+    steps:
+      - name: Checkout App Repo
+        uses: actions/checkout@v4
+        with:
+          path: app-stack-main
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: alvimrodrigo-corestack-labs/tf-aws-core-resources
+          path: tf-aws-core-resources
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "${{ secrets.AWS_ROLE_ARN }}"
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+          terraform_wrapper: false
+
+      - name: Setup Terragrunt
+        run: |
+          sudo wget -q -O /usr/local/bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/latest/download/terragrunt_linux_amd64"
+          sudo chmod +x /usr/local/bin/terragrunt
+
+      - name: Deploy ECS Services
+        run: |
+          terragrunt run --all --backend-bootstrap apply
+        working-directory: app-stack-main/infrastructure/ecs-service

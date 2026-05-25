@@ -8,18 +8,40 @@ dependency "network" {
 
 dependency "cluster" {
   config_path = "../../../../tf-aws-core-resources/environments/dev/ecs-cluster"
+  
+  mock_outputs = {
+    cluster_arn = "arn:aws:ecs:us-east-1:123456789012:cluster/mock-cluster"
+  }
+  mock_outputs_allowed_terraform_commands = ["plan"]
 }
 
 dependency "lb_rules" {
   config_path = "../../load-balancer-rules"
+  
+  mock_outputs = {
+    target_group_arns = {
+      frontend = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/mock-frontend/12345"
+    }
+  }
+  mock_outputs_allowed_terraform_commands = ["plan"]
 }
 
 dependency "ecs_sg" {
   config_path = "../../security-groups/ecs"
+  
+  mock_outputs = {
+    security_group_id = "sg-mock-id"
+  }
+  mock_outputs_allowed_terraform_commands = ["plan"]
 }
 
 dependency "ecr" {
   config_path = "../../ecr/frontend"
+  
+  mock_outputs = {
+    repository_url = "123456789012.dkr.ecr.us-east-1.amazonaws.com/mock-repo"
+  }
+  mock_outputs_allowed_terraform_commands = ["plan"]
 }
 
 terraform {
