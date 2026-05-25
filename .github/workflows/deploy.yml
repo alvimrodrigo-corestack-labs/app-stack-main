@@ -60,7 +60,8 @@ jobs:
         id: plan
         run: |
           set -o pipefail
-          terragrunt --terragrunt-ignore-external-dependencies run --all --backend-bootstrap plan --no-color | tee plan_output.txt
+          # Removida flag problemática, Terragrunt usará o filesystem local (VPC/Cluster já existem)
+          terragrunt run --all --backend-bootstrap plan --no-color | tee plan_output.txt
         working-directory: app-stack-main/infrastructure
 
       - name: Post Plan to PR
@@ -121,7 +122,7 @@ jobs:
 
       - name: Terragrunt Apply
         run: |
-          terragrunt --terragrunt-ignore-external-dependencies run --all --backend-bootstrap apply
+          terragrunt run --all --backend-bootstrap apply
         working-directory: app-stack-main/infrastructure
 
   build-push:
@@ -202,5 +203,5 @@ jobs:
 
       - name: Deploy ECS Services
         run: |
-          terragrunt --terragrunt-ignore-external-dependencies run --all --backend-bootstrap apply
+          terragrunt run --all --backend-bootstrap apply
         working-directory: app-stack-main/infrastructure/ecs-service
