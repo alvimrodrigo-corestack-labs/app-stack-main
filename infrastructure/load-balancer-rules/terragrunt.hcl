@@ -8,7 +8,7 @@ dependency "network" {
   mock_outputs = {
     vpc_id = "vpc-mock-id"
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 dependency "alb" {
@@ -19,7 +19,7 @@ dependency "alb" {
       "80" = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/my-load-balancer/50dc6c495c0c9188/f2f7dc8efc522d38"
     }
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 terraform {

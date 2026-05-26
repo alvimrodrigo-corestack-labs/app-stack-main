@@ -8,7 +8,7 @@ dependency "network" {
   mock_outputs = {
     vpc_id = "vpc-mock-id"
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 dependency "ecs_sg" {
@@ -17,7 +17,7 @@ dependency "ecs_sg" {
   mock_outputs = {
     security_group_id = "sg-mock-id"
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 terraform {

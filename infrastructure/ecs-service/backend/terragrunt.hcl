@@ -12,7 +12,7 @@ dependency "cluster" {
   mock_outputs = {
     cluster_arn = "arn:aws:ecs:us-east-1:123456789012:cluster/mock-cluster"
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 dependency "lb_rules" {
@@ -23,7 +23,7 @@ dependency "lb_rules" {
       backend = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/mock-backend/12345"
     }
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 dependency "ecs_sg" {
@@ -32,7 +32,7 @@ dependency "ecs_sg" {
   mock_outputs = {
     security_group_id = "sg-mock-id"
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 dependency "ecr" {
@@ -41,7 +41,7 @@ dependency "ecr" {
   mock_outputs = {
     repository_url = "123456789012.dkr.ecr.us-east-1.amazonaws.com/mock-repo"
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 dependency "rds" {
@@ -51,7 +51,7 @@ dependency "rds" {
     db_instance_address       = "mock-db.cluster-123.us-east-1.rds.amazonaws.com"
     db_password_secret_arn    = "arn:aws:secretsmanager:us-east-1:123456789012:secret:mock-secret"
   }
-  mock_outputs_allowed_terraform_commands = ["plan"]
+  mock_outputs_allowed_terraform_commands = ["plan", "destroy"]
 }
 
 terraform {
@@ -66,6 +66,7 @@ inputs = {
   desired_count    = 1
   launch_type      = "FARGATE"
   assign_public_ip = false
+  health_check_grace_period_seconds = 300
   
   subnets          = dependency.network.outputs.private_subnet_ids
   security_groups  = [dependency.ecs_sg.outputs.security_group_id]
