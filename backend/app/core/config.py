@@ -76,6 +76,8 @@ class Settings(BaseSettings):
                     path=secret["db_name"],
                 )
             except Exception as e:
+                if self.ENVIRONMENT == "production":
+                    raise RuntimeError(f"Could not load database secret {self.DATABASE_SECRET_NAME}: {e}")
                 print(f"Error loading secret {self.DATABASE_SECRET_NAME}: {e}")
         
         return PostgresDsn.build(

@@ -3,46 +3,35 @@ FROM python:3.10
 ENV PYTHONUNBUFFERED=1
 
 # Install uv
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
 COPY --from=ghcr.io/astral-sh/uv:0.9.26 /uv /uvx /bin/
 
 # Compile bytecode
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#compiling-bytecode
 ENV UV_COMPILE_BYTECODE=1
-
-# uv Cache
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#caching
 ENV UV_LINK_MODE=copy
 
 WORKDIR /app/
 
 # Place executables in the environment at the front of the path
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#using-the-environment
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Install dependencies
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
+# Install dependencies using workspace context
+# We mount everything to ensure uv sync finds all members and pyprojects
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=.,target=. \
     uv sync --frozen --no-install-workspace --package app
 
+# Copy source code
 COPY ./backend/scripts /app/backend/scripts
-
 COPY ./backend/pyproject.toml ./backend/alembic.ini /app/backend/
-
 COPY ./backend/app /app/backend/app
 
-# Sync the project
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
+# Final sync to ensure everything is ready
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=.,target=. \
     uv sync --frozen --package app
 
-# Instalar boto3 explicitamente para carregar segredos da AWS
-# Deve ser rodado APÓS o uv sync para evitar remoção automática por não estar no lockfile
-RUN uv pip install boto3
+# FORÇAR instalação do boto3 no virtualenv para garantir acesso ao Secrets Manager
+RUN /app/.venv/bin/python -m pip install boto3
 
 WORKDIR /app/backend/
 

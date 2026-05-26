@@ -51,11 +51,12 @@ terraform {
 inputs = {
   name             = "fastapi-frontend"
   cluster_arn      = dependency.cluster.outputs.cluster_arn
-  cpu              = 256
-  memory           = 512
+  cpu              = 512
+  memory           = 1024
   desired_count    = 1
   launch_type      = "FARGATE"
   assign_public_ip = false
+  health_check_grace_period_seconds = 60
   
   subnets          = dependency.network.outputs.private_subnet_ids
   security_groups  = [dependency.ecs_sg.outputs.security_group_id]
