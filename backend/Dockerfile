@@ -14,24 +14,21 @@ WORKDIR /app/
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Install dependencies using workspace context
-# We mount everything to ensure uv sync finds all members and pyprojects
+# Copy workspace configuration files first for better caching
+COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml ./backend/
+
+# Install dependencies (frozen)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=.,target=. \
     uv sync --frozen --no-install-workspace --package app
 
-# Copy source code
-COPY ./backend/scripts /app/backend/scripts
-COPY ./backend/pyproject.toml ./backend/alembic.ini /app/backend/
-COPY ./backend/app /app/backend/app
+# Copy application source code
+COPY ./backend /app/backend
 
-# Final sync to ensure everything is ready
+# Final sync and install boto3 for AWS Secrets Manager access
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=.,target=. \
-    uv sync --frozen --package app
-
-# FORÇAR instalação do boto3 no virtualenv para garantir acesso ao Secrets Manager
-RUN /app/.venv/bin/python -m pip install boto3
+    uv sync --frozen --package app && \
+    uv pip install boto3
 
 WORKDIR /app/backend/
 
