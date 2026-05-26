@@ -1,7 +1,10 @@
+import json
 import secrets
 import warnings
 from typing import Annotated, Any, Literal
+from urllib.parse import quote_plus
 
+import boto3
 from pydantic import (
     AnyUrl,
     BeforeValidator,
@@ -62,26 +65,27 @@ class Settings(BaseSettings):
     def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
         if self.DATABASE_SECRET_NAME:
             try:
-                import boto3
-                import json
                 client = boto3.client("secretsmanager", region_name="us-east-1")
                 response = client.get_secret_value(SecretId=self.DATABASE_SECRET_NAME)
                 secret = json.loads(response["SecretString"])
                 
-                # Suporte a db_name ou dbname
-                db_name = secret.get("db_name") or secret.get("dbname")
+                # Suporte a db_name ou dbname (padrão RDS)
+                db_name = secret.get("db_name") or secret.get("dbname", "app")
                 
-                return PostgresDsn.build(
-                    scheme="postgresql+psycopg",
-                    username=secret["username"],
-                    password=secret["password"],
-                    host=secret["host"],
-                    port=int(secret["port"]),
-                    path=db_name,
-                )
+                # Proteção contra caracteres especiais na senha e usuário
+                user = quote_plus(str(secret["username"]))
+                password = quote_plus(str(secret["password"]))
+                host = secret["host"]
+                port = secret["port"]
+                
+                # Montagem manual robusta para evitar erros de validação do Pydantic com DSN
+                uri = f"postgresql+psycopg://{user}:{password}@{host}:{port}/{db_name}"
+                return PostgresDsn(uri)
             except Exception as e:
-                # Erro fatal em produção se o segredo falhar
-                raise RuntimeError(f"CRITICAL: Failed to load database secret {self.DATABASE_SECRET_NAME}: {e}")
+                # Se estivermos em produção e o segredo falhar, a aplicação deve parar com erro real
+                if self.ENVIRONMENT == "production":
+                    raise RuntimeError(f"CRITICAL: Could not load database secret {self.DATABASE_SECRET_NAME}: {e}")
+                print(f"Warning: Failed to load secret {self.DATABASE_SECRET_NAME}, falling back to defaults: {e}")
         
         return PostgresDsn.build(
             scheme="postgresql+psycopg",
@@ -132,6 +136,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _enforce_non_default_secrets(self) -> Self:
         self._check_default_secret("SECRET_KEY", self.SECRET_KEY)
+        # Ignora verificação de senha se usar Secrets Manager
         if not self.DATABASE_SECRET_NAME:
             self._check_default_secret("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
         self._check_default_secret(
