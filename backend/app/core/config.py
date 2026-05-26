@@ -67,18 +67,21 @@ class Settings(BaseSettings):
                 client = boto3.client("secretsmanager", region_name="us-east-1")
                 response = client.get_secret_value(SecretId=self.DATABASE_SECRET_NAME)
                 secret = json.loads(response["SecretString"])
+                
+                # Suporte a db_name ou dbname
+                db_name = secret.get("db_name") or secret.get("dbname")
+                
                 return PostgresDsn.build(
                     scheme="postgresql+psycopg",
                     username=secret["username"],
                     password=secret["password"],
                     host=secret["host"],
                     port=int(secret["port"]),
-                    path=secret["db_name"],
+                    path=db_name,
                 )
             except Exception as e:
-                if self.ENVIRONMENT == "production":
-                    raise RuntimeError(f"Could not load database secret {self.DATABASE_SECRET_NAME}: {e}")
-                print(f"Error loading secret {self.DATABASE_SECRET_NAME}: {e}")
+                # Erro fatal em produção se o segredo falhar
+                raise RuntimeError(f"CRITICAL: Failed to load database secret {self.DATABASE_SECRET_NAME}: {e}")
         
         return PostgresDsn.build(
             scheme="postgresql+psycopg",

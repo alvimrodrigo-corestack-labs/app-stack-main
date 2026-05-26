@@ -21,7 +21,7 @@ dependency "ecs_sg" {
 }
 
 terraform {
-  source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/security-group?ref=main"
+  source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/security-group?ref=feat/alb-app-link"
 }
 
 inputs = {

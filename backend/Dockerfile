@@ -18,20 +18,23 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY pyproject.toml uv.lock ./
 COPY backend/pyproject.toml ./backend/
 
-# Install dependencies (frozen) - Isso garante que o grosso venha do lock
+# Install dependencies (frozen)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-workspace --package app
 
 # Copy application source code
 COPY ./backend /app/backend
 
-# Final sync SEM --frozen para permitir que o boto3 (adicionado ao pyproject.toml) seja instalado
+# Final sync SEM --frozen para garantir que o boto3 (adicionado ao pyproject.toml) seja instalado
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --package app
 
-# Garantia final: instalar boto3 explicitamente caso o uv sync o ignore por causa do lock
+# FORÇAR instalação do boto3 no virtualenv como garantia absoluta
 RUN uv pip install boto3
 
 WORKDIR /app/backend/
+
+# Verificação de sanidade: garantir que boto3 é importável
+RUN python -c "import boto3; print('Boto3 successfully installed')"
 
 CMD ["fastapi", "run", "--workers", "4", "app/main.py"]
