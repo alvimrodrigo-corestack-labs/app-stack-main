@@ -10,7 +10,6 @@ from pydantic import (
     BeforeValidator,
     EmailStr,
     HttpUrl,
-    PostgresDsn,
     computed_field,
     model_validator,
 )
@@ -62,7 +61,7 @@ class Settings(BaseSettings):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
         if self.DATABASE_SECRET_NAME:
             try:
                 client = boto3.client("secretsmanager", region_name="us-east-1")
@@ -73,28 +72,20 @@ class Settings(BaseSettings):
                 db_name = secret.get("db_name") or secret.get("dbname", "app")
                 
                 # Proteção contra caracteres especiais na senha e usuário
-                user = quote_plus(str(secret["username"]))
-                password = quote_plus(str(secret["password"]))
-                host = secret["host"]
-                port = secret["port"]
+                user = quote_plus(str(secret.get("username", self.POSTGRES_USER)))
+                password = quote_plus(str(secret.get("password", self.POSTGRES_PASSWORD)))
+                host = secret.get("host", self.POSTGRES_SERVER)
+                port = secret.get("port", self.POSTGRES_PORT)
                 
                 # Montagem manual robusta para evitar erros de validação do Pydantic com DSN
-                uri = f"postgresql+psycopg://{user}:{password}@{host}:{port}/{db_name}"
-                return PostgresDsn(uri)
+                return f"postgresql+psycopg://{user}:{password}@{host}:{port}/{db_name}"
             except Exception as e:
                 # Se estivermos em produção e o segredo falhar, a aplicação deve parar com erro real
                 if self.ENVIRONMENT == "production":
                     raise RuntimeError(f"CRITICAL: Could not load database secret {self.DATABASE_SECRET_NAME}: {e}")
                 print(f"Warning: Failed to load secret {self.DATABASE_SECRET_NAME}, falling back to defaults: {e}")
         
-        return PostgresDsn.build(
-            scheme="postgresql+psycopg",
-            username=self.POSTGRES_USER,
-            password=self.POSTGRES_PASSWORD,
-            host=self.POSTGRES_SERVER,
-            port=self.POSTGRES_PORT,
-            path=self.POSTGRES_DB,
-        )
+        return f"postgresql+psycopg://{quote_plus(self.POSTGRES_USER)}:{quote_plus(self.POSTGRES_PASSWORD)}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False

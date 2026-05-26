@@ -97,7 +97,8 @@ inputs = {
         { name = "SECRET_KEY", value = "lab-secret-key-change-me" },
         { name = "FIRST_SUPERUSER", value = "admin@example.com" },
         { name = "FIRST_SUPERUSER_PASSWORD", value = "admin123" },
-        { name = "BACKEND_CORS_ORIGINS", value = "http://dashboard.fastapi.corestack.labs,https://dashboard.fastapi.corestack.labs" }
+        { name = "BACKEND_CORS_ORIGINS", value = "http://dashboard.fastapi.corestack.labs,https://dashboard.fastapi.corestack.labs" },
+        { name = "FORCE_REDEPLOY_TIMESTAMP", value = "20260526-1440" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
