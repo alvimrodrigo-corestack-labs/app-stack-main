@@ -55,7 +55,7 @@ dependency "rds" {
 }
 
 terraform {
-  source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/ecs-service?ref=main"
+  source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/ecs-service?ref=feat/alb-app-link"
 }
 
 inputs = {

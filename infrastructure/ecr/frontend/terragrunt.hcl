@@ -3,7 +3,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/ecr?ref=main"
+  source = "git::git@github.com:alvimrodrigo-corestack-labs/tf-aws-modules.git//modules/ecr?ref=feat/alb-app-link"
 }
 
 inputs = {
